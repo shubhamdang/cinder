@@ -336,6 +336,13 @@ class API(base.Base):
 
     def restore(self, context, backup_id, volume_id=None, name=None):
         """Make the RPC call to restore a volume backup."""
+        # Adding that patch separate so it can't mix with stable code
+        # patch to disable backup restore on new volume.
+        if volume_id is None:
+            msg = _('Backup restore is not supported on new volume, Please use'
+                    ' existing volumes.')
+            raise exception.InvalidInput(reason=msg)
+
         backup = self.get(context, backup_id)
         context.authorize(policy.RESTORE_POLICY, target_obj=backup)
         if backup['status'] != fields.BackupStatus.AVAILABLE:
@@ -394,7 +401,7 @@ class API(base.Base):
         # Setting the status here rather than setting at start and unrolling
         # for each error condition, it should be a very small window
         backup.host = self._get_available_backup_service_host(
-            backup.host, backup.availability_zone)
+            backup.host, volume.availability_zone)
         backup.status = fields.BackupStatus.RESTORING
         backup.restore_volume_id = volume.id
         backup.save()
